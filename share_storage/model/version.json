@@ -1,0 +1,1 @@
+{"version": 1, "model": "convnext_tiny", "note": "1회차 기준실험 val top1 0.8539 / test top1 0.8919"}

@@ -1,0 +1,18 @@
+# 데이터·사진·모델은 깃에 올리지 않음 (학과 서버 / 드라이브에 보관)
+share_storage/*/*
+!share_storage/*/.gitkeep
+!share_storage/model/classes.txt
+!share_storage/model/version.json
+*.pt
+*.pth
+*.csv.gz
+1M_Final.csv
+food-101/
+
+# 비밀값
+.env
+.streamlit/secrets.toml
+
+__pycache__/
+.ipynb_checkpoints/
+.venv/
