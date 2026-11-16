@@ -41,7 +41,9 @@
 | `backend/` | `main.py` FastAPI: `POST /analyze`(사진 + 알레르기 → 판정 JSON), `GET /allergens` | 1단계 연결됨, 설명은 LLM 연결 후 |
 | `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
 | `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `candidates.csv` 새 음식 후보 74종, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
-| `llm/` | 이름 추정, 재료 추정, 설명 | 빈 함수 |
+| `llm/` | `guess.py` 이름·재료 추정, `explain.py` 설명 | 빈 함수 |
+| `evaluation/` | `정답지.csv` 알레르기 정답지 (사람 확인) | 틀만 있음 |
+| `AGENTS.md` | AI 코딩 도구용 규칙·데이터 형식·함수 모양 (`CLAUDE.md`가 불러옴) | 있음 |
 | `notebooks/` | `01` EDA·전처리(알레르기·나트륨), `02` 새 음식 후보 집계, `03` 표 확장(175종)·사진 수집, `04` 학습 ② CLIP 파인튜닝 | 03 완료, 04 실행 전 |
 | `docs/plan.md` | 단계별 할 일 | 있음 |
 | `docs/역할분담.md` | 팀원별 담당 (한솔·중현·유라·준영) | 있음 |

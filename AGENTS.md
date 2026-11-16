@@ -1,0 +1,95 @@
+# AGENTS.md — AI 코딩 도구용 안내 (Claude Code · Codex · Gemini 공통)
+
+사람용 설명은 `README.md`, `docs/진행상황.md`. 이 파일은 **AI가 작업 전에 읽는 규칙·구조·데이터 형식**이다.
+팀원별 할 일과 완료 기준은 `docs/역할분담.md`. 사용자가 자기 이름을 말하면 그 사람 부분만 작업한다.
+
+## 프로젝트 한 줄
+찍먹: 음식 사진 → 무슨 음식(분류/CLIP) → 레시피 통계로 알레르기 19항목 비율 → **룰**로 🔴주의/🟡확인 필요/⚪해당 없음. FastAPI + HTML 한 장.
+
+## 절대 규칙
+1. **판정은 `knowledge/judge.py`의 규칙만 한다.** LLM은 이름 추정·재료 추정·설명만. LLM 출력으로 단계를 바꾸지 않는다 (교차 확인 실패 시 `확인 필요`로 올리는 것만 허용).
+2. 어떤 화면·문장에서도 **"안전하다"고 말하지 않는다.** 레시피 30개 미만은 `정보 부족`, LLM 추정은 `추정` 표시.
+3. **데이터는 깃에 올리지 않는다** (재배포 금지): `1M_Final.csv`, 레시피 원문(`*.parquet`), 사진, 모델 가중치(`*.pt`). 깃에는 요약표(`food_table.csv`)만. `.gitignore`가 막고 있지만 새 확장자를 만들면 확인할 것.
+4. **비밀값(API 키, 학과 서버 계정)은 `.env`에만.** 코드·노트북·커밋·출력에 쓰지 않는다. 읽을 때는 `os.environ`.
+5. 함수 모양(이름·입력·출력)은 아래 "연결 지점"을 지킨다. 바꿔야 하면 그 함수를 쓰는 담당자와 먼저 맞춘다.
+6. 무거운 계산(1M_Final 처리, 학습, 사진 전체 처리)은 **Colab/학과 서버**에서. 노트북으로 만든다.
+7. `main`에 바로 올리지 않는다. 브랜치 → PR.
+
+## 폴더
+| 경로 | 내용 | 담당 |
+|---|---|---|
+| `backend/main.py` | `POST /analyze`(사진+알레르기→JSON), `GET /allergens`, `frontend/` 제공 | 김유라 |
+| `frontend/index.html` | 알레르기 선택(localStorage) → 사진 → 결과 카드 | 서준영 |
+| `knowledge/rules.py` | 재료 → 19항목 규칙 (`allergen_flags`, `ingredients_text`, `match`) | (완료, 고칠 때 팀 공유) |
+| `knowledge/build_table.py` | 1M_Final → `food_table.csv` (Colab에서 실행) | (완료) |
+| `knowledge/lookup.py` | 음식 이름 → 비율 줄 (`row`, `ALLERGENS`) | (완료) |
+| `knowledge/judge.py` | 1/2단계 분기 + 판정 (`analyze`) | 박중현(2단계), 주한솔(기준값) |
+| `knowledge/search.py` | (만들 것) 사진 → CLIP → 비슷한 레시피 → 비율 줄 | 박중현 |
+| `modeling/model.py` | ConvNeXt-Tiny 로드·예측 (`load_model`, `predict`, `TF`) | 주한솔 |
+| `llm/` | `guess.py`(이름·재료 추정), `explain.py`(설명) — 지금 빈 함수 | 김유라 |
+| `evaluation/` | 알레르기 정답지 + 평가 스크립트 | 서준영 |
+| `notebooks/` | 01 EDA, 02 후보 집계, 03 표 확장·사진 수집, 04 CLIP. 새 노트북은 `05_...`부터 | 각자 |
+
+## 실행 · 자체 검사
+```bash
+pip install -r requirements.txt
+python -m knowledge.judge          # 판정 자체 검사 (assert). 판정 코드 고치면 꼭 돌릴 것
+uvicorn backend.main:app --reload  # http://localhost:8000 화면, /docs API 시험
+```
+`modeling/weights/best.pt`가 없으면 `/analyze`는 503 (화면·판정 코드는 가중치 없이도 개발 가능).
+
+## 연결 지점 (함수 모양)
+```python
+# 분류 (modeling/model.py)
+predict(model, pil_img, k=3) -> [(class, prob), ...]        # 확률 높은 순
+
+# 비율 줄: 1단계(lookup.row)와 2단계(search) 모두 이 모양
+{'알류': 0.12, ..., '잣': 0.0,          # 19항목, 0~1
+ 'n_recipes': 1520, 'nutrition': {'kcal': 450.0, 'protein_g':..., 'fat_g':..., 'carbs_g':..., 'fiber_g':..., 'sodium_mg':...},
+ 'source': '레시피 통계'}              # 2단계는 'CLIP 검색', LLM 재료 추정은 'LLM 추정'
+
+# 판정 (knowledge/judge.py)
+analyze(cands, my_allergens) -> {
+  'route': '1단계-1등' | '1단계-합치기' | '2단계',
+  'foods': [...], 'verdict': {알레르기: '주의'|'확인 필요'|'해당 없음'|'정보 부족'},
+  'other_caution': [...], 'n_recipes': int, 'nutrition': {...}, 'source': str}
+# backend가 여기에 'candidates': [{'food','prob'}] 추가. 설명 붙이면 'explanation': str | None
+
+# 2단계 검색 (knowledge/search.py, 만들 것)
+search(pil_img, k=30) -> (비율 줄, [(class, score), ...])   # 비율 줄은 위와 같은 모양
+
+# LLM (llm/) — 연결 전이면 None 반환, 앱은 None이어도 동작해야 함
+guess_name(pil_img) -> [(영어 음식 이름, 0~1)] | None
+guess_ingredients(food_name) -> ['flour', 'egg', ...] | None   # 영어 재료 → rules.allergen_flags로 판정
+explain(cls, info, question=None) -> str | None              # info = analyze() 결과
+```
+판정 기준 상수(`CAUTION 0.6`, `CHECK 0.2`, `MIN_RECIPES 30`, `T_ONE 0.8`, `T_KNOWN 0.3`)는 `judge.py` 맨 위. 임시값이며 실험으로 다시 정한다.
+
+## 데이터 (드라이브, 깃 밖)
+팀 공유 드라이브 폴더 `26-2 딥러닝`. Colab에서는 `/content/drive/MyDrive/26-2 딥러닝` (바로가기 추가 필요).
+한글 폴더명은 NFC 정규화해서 찾는다 → 노트북 04의 `find()` 함수를 그대로 쓰면 된다.
+
+| 경로 (`26-2 딥러닝/` 아래) | 형식 · 열 |
+|---|---|
+| `data1/1M_Final.csv` | 원본 레시피 100만 개 (1.4GB). 쓰는 열: `title`, `NER`(재료 리스트 문자열 `"['eggs', 'flour']"`), `energy_kcal_per_serving`·`protein_g_per_serving`·`fat_g_per_serving`·`carbs_g_per_serving`·`fiber_g_per_serving`·`sodium_mg_per_serving`, `image1`(사진 URL) |
+| `data1/table_recipes.parquet` | 표 175종에 매칭된 레시피만. `recipe_idx`(1M_Final 행 번호), `label`(음식), `title`, `NER`, `kcal`…`sodium_mg`, `image1`. 한 레시피가 두 음식에 걸리면 두 줄 |
+| `data1/images/{label}.parquet` | 레시피 사진 (음식당 최대 400, 짧은 변 256px JPEG). `recipe_idx`, `label`, `title`, `image1`, `jpg`(bytes), `md5` |
+| `data1/images/_fake_md5.csv` | 같은 그림이 반복된 가짜 사진 md5 → **학습·평가에서 제외** |
+| `data1/food-101.tar.gz` | Food-101 (101종 × 1,000장). 풀면 `food-101/images/{class}/{id}.jpg`, `meta/train.txt`·`test.txt` |
+| `찍먹_실험기록/best/convnext_tiny/best.pt` | 분류 모델 state_dict → 로컬 `modeling/weights/best.pt` |
+| `찍먹_실험기록/best/clip/` | 04 결과: `clip_ft.pt`(fp16 state_dict), `index_emb.npy`(레시피 벡터, fp16, 정규화됨), `index_meta.parquet`(`recipe_idx`, `label`, 같은 순서) |
+| `찍먹_실험기록/표/` | 실험 결과표 (`food_table.csv`, `clip_결과.csv`, `convnext_vs_clip.csv`, `사진수집_요약.csv`). 새 결과도 여기로 |
+
+깃 안 데이터:
+- `knowledge/food_table.csv`: 175행. `class`, 19항목 비율, `kcal, protein_g, fat_g, carbs_g, fiber_g, sodium_mg`(1인분 중앙값), `n_recipes`
+- `knowledge/candidates.csv`: 새 음식 후보 74종 (`class, display_ko, aliases`). 분류 모델은 모르고 표에만 있음
+- `modeling/classes.txt`: 분류 모델 101종 (순서 = 출력 순서)
+- 알레르기 19항목 (한국 표시 기준): 알류 우유 메밀 땅콩 대두 밀 고등어 게 새우 돼지고기 복숭아 토마토 아황산류 호두 닭고기 쇠고기 오징어 조개류 잣
+
+## 사진 수 주의
+한식(김밥·떡볶이 등)은 레시피·사진이 10개 미만. 사진 30장 미만 음식은 학습·평가에서 빼고 검색 대상으로만 둔다 (04와 같은 기준).
+
+## 노트북 규칙
+- 첫 셀: 드라이브 연결 + `find()` + 깃 clone/pull (`https://github.com/yura103/deeplearning_5`) + `sys.path.insert(0, REPO)` — 04 첫 셀 복사.
+- 결과 표는 `찍먹_실험기록/표/`에 csv(`utf-8-sig`), 모델은 `찍먹_실험기록/best/<이름>/`.
+- 셀마다 위에 "무엇을, 왜" 한두 줄 (팀원이 읽는다).
