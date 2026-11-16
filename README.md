@@ -1,89 +1,62 @@
-# 찍먹 🍽️ — 사진 한 장으로 알레르기·영양 정보 알려주는 서비스
+# 찍먹 🍽️ — 음식 사진 한 장으로 "나한테 위험한지" 알려주는 웹 앱
 
-해외여행 중 처음 보는 음식을 찍으면 무슨 음식인지 맞히고, 그 음식에 흔히 들어가는 알레르기 재료와 영양 정보를 알려준다.
+해외여행에서 처음 보는 음식을 찍으면, 내 알레르기 기준으로 위험한지와 영양 정보를 알려준다.
+음식 이름을 몰라도 된다.
 
-## 한눈에 보는 흐름
-
+## 사용자 입장
 ```
-① 사진 찍기
-   ↓
-② 분류 모델이 음식 이름 후보 3개를 맞힘            ← modeling/   (한솔)
-   ↓
-③ 룰베이스 표에서 그 음식의 알레르기·영양 정보를 찾음 ← knowledge/  (중현)
-   ↓
-④ LLM이 결과를 쉬운 말로 설명 (선택)                ← llm/        (중현)
-   ↓
-⑤ 사용자가 "맞아요/틀려요/목록에 없어요" 피드백
-   ↓
-⑥ 피드백 사진을 모아 다시 학습, 새 음식도 추가     ← trigger/    (유라, MLOps)
+① 내 알레르기 고르기 (예: 땅콩, 새우)
+② 음식 사진 찍기
+③ 결과:  🔴 새우 주의   ⚪ 땅콩 거의 없음   칼로리 450 · 나트륨 높음
+         [왜요?] "보통 새우 육수를 써요..."   [가게에 물어보기] "Does this contain shrimp?"
 ```
 
-화면(①~⑤)은 `streamlit_app/` 하나에서 모두 처리한다 (유라).
+## 우리 내부 흐름
+```
+사진 ─> [모델] 무슨 음식? (후보 3개 + 확신도)
+           │
+     아는 음식인가? ── 예 ──> [1단계 룰베이스] 미리 만든 표(food_table)에서 찾기 ──┐
+           │                                                                     ▼
+           아니오                                                     [판정] 내 알레르기 기준 🔴🟡⚪
+           ▼                                                                     ▲
+     [2단계 RAG] LLM이 이름 추정 → 레시피 100만 개에서 검색 → 같은 규칙으로 계산 ──┘
+                 (레시피도 없으면 LLM이 재료 추정 → 같은 규칙, '추정' 표시)
+           │
+     [설명] LLM이 찾아온 표·레시피를 근거로 쉬운 말 설명
+```
 
-## 역할 분담 (제안 — 팀 회의에서 확정)
+**원칙**
+- 판정은 항상 같은 규칙(`knowledge/rules.py`)이 한다. LLM은 이름 추정·재료 추정·설명만 한다.
+- 1단계와 2단계는 같은 모양의 "알레르기 비율 줄"(19항목 + 레시피 수 + 출처)을 만든다 → 판정 함수 하나로 처리.
+- 어떤 화면에서도 "안전하다"고 표시하지 않는다. 레시피 30개 미만은 `정보 부족`, LLM 추정은 `추정` 표시.
 
-| 담당 | 폴더 | 하는 일 |
+## 폴더
+| 폴더 | 내용 | 상태 |
 |---|---|---|
-| **유라** · MLOps | `streamlit_app/`, `trigger/`, `share_storage/` | 화면, 피드백 저장, 재학습·승격 자동화, 학과 서버 배포 |
-| **한솔** · 모델 | `modeling/` | 분류 모델 학습 코드·가중치, `predict()` 함수 맞추기, 잊어버림 실험 |
-| **중현** · 룰베이스·LLM | `knowledge/`, `llm/` | 음식별 알레르기·영양 표, 경고 판정 규칙, LLM 설명 |
-| **서준영** · 데이터·평가 | `evaluation/` (만들 예정) | 데이터 분할, 사용자 사진 평가셋, 알레르기 정답지로 경고 정확도 검증 |
+| `frontend/` | 웹 화면: 알레르기 선택, 카메라, 결과 카드 | 만들 예정 |
+| `backend/` | FastAPI `/analyze`: 사진 → 모델 → 판정 → 설명을 순서대로 불러 결과 반환 | 만들 예정 |
+| `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
+| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `food_table.csv` 결과표, `lookup.py` | 판정·검색 추가 예정 |
+| `llm/` | 이름 추정, 재료 추정, 설명 | 빈 함수 |
+| `notebooks/` | `01` EDA·전처리(알레르기·나트륨), `02` 새 음식 후보 집계 | 있음 |
+| `docs/plan.md` | 단계별 할 일 | 있음 |
 
-## 폴더 설명
+## 데이터 3단계 (깃에는 ③만)
+| 파일 | 뭐냐 | 위치 |
+|---|---|---|
+| ① `1M_Final.csv` | 원본 레시피 100만 개 | 드라이브 `26-2 딥러닝/data1/` (재배포 금지) |
+| ② `food101_recipes.parquet` | ①에서 Food-101 음식과 겹치는 레시피만 (약 11만 7천 개) — "왜요?" 근거용 | 드라이브 `data1/` (재배포 금지) |
+| ③ `food_table.csv` | ②에 알레르기 규칙을 돌린 음식별 요약표 (101행) — 1단계 판정용 | `knowledge/` |
 
-```
-deeplearning_5/
-├─ streamlit_app/app.py     화면 (사진 → 결과 → 경고 → 피드백)
-├─ modeling/model.py        모델 불러오기·예측 (학습 코드는 한솔님 코드가 여기로)
-├─ trigger/retrain.py       재학습 (아직 비어 있음, 노션 규칙만 적어 둠)
-├─ knowledge/               룰베이스
-│  ├─ rules.py              음식 이름↔레시피 매칭 규칙 + 재료→알레르기 19항목 규칙
-│  ├─ build_table.py        1M_Final 레시피로 음식별 표를 만드는 스크립트 (Colab에서 실행)
-│  ├─ food_table.csv        결과 표: 101종 × 알레르기 비율 (+ 영양 중앙값 예정) + 레시피 수
-│  ├─ class_map.csv         새 음식 이름이 표 이름과 다를 때 연결해 주는 표 (지금은 비어 있음)
-│  └─ lookup.py             음식 이름 → 경고 정보 (판정은 여기서만)
-├─ llm/explain.py           판정 결과를 쉬운 말로 설명 (LLM 아직 미연결)
-├─ notebooks/               01 EDA·전처리(사진·레시피 확인, 알레르기·나트륨), 02 새 음식 후보 집계
-├─ share_storage/           사진·기록·모델 보관 (깃에는 폴더 모양만)
-│  ├─ pending/   아직 검토 안 한 피드백 사진
-│  ├─ data/      승인된 피드백 사진
-│  ├─ backupdata/ 지난 회차 피드백
-│  ├─ metadata/  uploads.csv (누가 언제 무슨 사진에 어떤 정답을 줬는지)
-│  ├─ model/     best.pt(깃 제외), classes.txt(음식 목록), version.json
-│  └─ metrics/   회차별 평가 결과
-└─ docs/plan.md             단계별 할 일
-```
-
-`share_storage/` 구조는 노션 「사용자 피드백으로 계속 배우는 음식 분류 서비스」, 폴더 이름은 유라님 [docker-mlops-pipeline](https://github.com/yura103/docker-mlops-pipeline)을 따랐다.
-
-## 서로 지켜야 할 약속 (이것만 맞으면 각자 따로 작업 가능)
-
-```python
-predict(model, img)   -> [("ramen", 0.82), ("pho", 0.10), ("udon", 0.03)]       # modeling/model.py
-lookup("ramen")       -> {"status": "표 있음",                                   # knowledge/lookup.py
-                          "allergens": [("밀", 0.81, "높음"), ("대두", 0.42, "가능")],
-                          "nutrition": {"kcal": 450.0, "sodium_mg": 1800.0},
-                          "n_recipes": 1520, "source": "1M_Final 레시피 통계"}
-explain("ramen", info) -> "라멘은 보통 밀 면을 써서 ..." 또는 None                # llm/explain.py
-```
-
-- **경고 판정은 `lookup`만 한다. LLM은 설명만 한다.** (LLM이 "들어있지 않아요"라고 지어내는 걸 막기 위해)
-- 어떤 화면에서도 **"안전하다"고 표시하지 않는다.** 항상 "가게에 확인하세요".
-- 레시피 30개 미만 = `정보 부족`, 표에 없는 음식 = `정보 없음` → 둘 다 확인 안내.
-
-## 실행
-
+## 실행 (백엔드가 생기면)
 ```bash
 pip install -r requirements.txt
-# 모델 가중치(best.pt)를 share_storage/model/ 에 복사한 뒤
-streamlit run streamlit_app/app.py
+# 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
+uvicorn backend.main:app --reload
 ```
+LLM API 키·서버 계정은 `.env`에만 둔다 (gitignore 됨). 절대 커밋하지 않는다.
 
-## 깃에 올리지 않는 것
-- 사진, 1M_Final.csv, 모델 가중치(.pt) → 학과 서버 `food101/` 또는 드라이브에 보관
-- 서버 계정·비밀번호·API 키 → `.env`, `.streamlit/secrets.toml` (gitignore 되어 있음)
-
-## 데이터 출처
+## 출처
 - Food-101 (Bossard et al., ECCV 2014) — 학술 이용
-- 1M_Final (Recipe1M+ 파생, Kaggle) — 연구용, 재배포 금지 (표에는 통계만 담음)
+- 1M_Final (Recipe1M+ 파생, Kaggle) — 연구용, 재배포 금지 (깃에는 통계 요약만)
 - 알레르기 기준: 「식품 등의 표시·광고에 관한 법률 시행규칙」 [별표 2] 19개 항목

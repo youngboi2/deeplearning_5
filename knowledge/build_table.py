@@ -6,7 +6,7 @@ notebooks/01_eda_알레르기_나트륨.ipynb C·D·E 파트를 스크립트로 
     cd knowledge
     python build_table.py --csv "/content/drive/MyDrive/26-2 딥러닝/data1/1M_Final.csv"
 
-새 클래스가 생기면 share_storage/model/classes.txt 에 추가된 이름으로 다시 돌리면 된다
+새 클래스가 생기면 modeling/classes.txt 에 추가된 이름으로 다시 돌리면 된다
 (이름이 레시피 제목과 다르면 rules.py 의 ALIAS 에 별칭 추가).
 """
 import argparse
@@ -24,8 +24,9 @@ NUTRI = {'energy_kcal_per_serving': 'kcal', 'protein_g_per_serving': 'protein_g'
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--csv', required=True, help='1M_Final.csv 경로')
-    ap.add_argument('--classes', default=HERE.parent / 'share_storage/model/classes.txt')
+    ap.add_argument('--classes', default=HERE.parent / 'modeling/classes.txt')
     ap.add_argument('--out', default=HERE / 'food_table.csv')
+    ap.add_argument('--recipes-out', help='매칭된 레시피 원문 저장 경로(.parquet). 재배포 금지라 깃 말고 드라이브에')
     a = ap.parse_args()
 
     classes = Path(a.classes).read_text(encoding='utf-8').split()
@@ -48,6 +49,11 @@ def main():
     assert len(out) == len(classes)
     out.to_csv(a.out)
     print(f'{a.out} 저장: {len(out)}종, 레시피 30개 미만 {(out.n_recipes < 30).sum()}종')
+
+    if a.recipes_out:  # RAG 근거용: Food-101 음식과 매칭된 레시피만 (한 레시피가 두 음식에 걸리면 두 줄)
+        rec = df.loc[pairs.idx.values].rename(columns=NUTRI).assign(label=pairs.label.values)
+        rec.reset_index(names='recipe_idx').to_parquet(a.recipes_out, index=False)
+        print(f'{a.recipes_out} 저장: 레시피 {len(rec):,}줄')
 
 
 if __name__ == '__main__':
