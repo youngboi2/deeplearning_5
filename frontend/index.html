@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>찍먹 (찍고 먹자)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Gilda+Display&display=swap" rel="stylesheet">
+<style>
+  /* 디자인: 발표 표지(찍먹 로고 + 연한 수채화 배경) + 흑백 에디토리얼 쇼핑몰 템플릿 느낌.
+     모서리는 전부 각지게(0), 동그란 건 판정 도장 하나만. 색은 흑백 + 판정 색(빨강/노랑)만. */
+  :root {
+    --bg: #f4f4f2; --paper: #fdfdfb; --ink: #161616; --sub: #5f5f5b; --line: #161616; --soft: #d9d9d4;
+    --red: #c62828; --amber: #b7791f; --frame: #2d2d2d; --art: .16;
+    --sans: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+    --serif: "Gilda Display", "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f0f0f; --paper: #181817; --ink: #efefea; --sub: #a3a39d; --line: #efefea; --soft: #3a3a37;
+            --red: #ef6b6b; --amber: #e0a94a; --frame: #000; --art: .14; }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--sans); word-break: keep-all; overflow-wrap: anywhere; }
+
+  .app { position: relative; max-width: 480px; min-height: 100dvh; margin: 0 auto; background: var(--paper);
+         display: flex; flex-direction: column; isolation: isolate; overflow: hidden; }
+  @media (min-width: 560px) {
+    body { padding: 32px 16px; }
+    .app { min-height: calc(100dvh - 64px); border: 10px solid var(--frame); }
+  }
+
+  /* 상단 바 */
+  .bar { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .bar .mark { font-weight: 900; font-size: 17px; letter-spacing: -.02em; }
+  .bar .tag { font-family: var(--serif); font-size: 14px; color: var(--sub); }
+
+  /* 표지 */
+  .hero { position: relative; text-align: center; padding: 44px 20px 30px; }
+  .hero::before { content: ""; position: absolute; inset: 8px -40px 0; z-index: -1;
+                  background: url("assets/hero.webp") center / contain no-repeat; opacity: var(--art); }
+  @media (prefers-color-scheme: dark) { .hero::before { filter: grayscale(1) invert(1); } }  /* 어두운 배경에선 선화처럼 */
+  .hero .kicker { font-size: 13px; font-weight: 500; color: var(--sub); }
+  .hero h1 { font-size: 64px; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; margin-top: 6px; }
+  .hero h1 small { font-size: 20px; font-weight: 700; letter-spacing: -.02em; vertical-align: .55em; margin-left: 4px; }
+  .rules { width: 168px; margin: 14px auto 16px; display: grid; gap: 3px; }
+  .rules i { display: block; height: 2px; background: var(--line); }
+  .rules i:nth-child(2) { width: 82%; margin-left: auto; } .rules i:nth-child(3) { width: 64%; margin-left: auto; }
+  .hero p { font-size: 15px; font-weight: 500; }
+  .hero .en { font-family: var(--serif); font-size: 15px; color: var(--sub); margin-top: 2px; }
+
+  /* 단계 */
+  .step { padding: 22px 20px; border-top: 1px solid var(--line); }
+  .step h2 { display: flex; align-items: baseline; gap: 8px; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .step h2 .no { font-family: var(--serif); font-size: 20px; font-weight: 400; }
+  .help { font-size: 13px; color: var(--sub); margin-bottom: 14px; }
+
+  .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .chips label { position: relative; display: block; text-align: center; padding: 9px 2px; border: 1px solid var(--line);
+                 font-size: 14px; cursor: pointer; user-select: none; transition: background .15s, color .15s; }
+  .chips input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .chips label:has(input:checked) { background: var(--ink); color: var(--paper); font-weight: 700; }
+  .chips label:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .count { font-size: 13px; color: var(--sub); margin-top: 10px; min-height: 1.6em; }
+
+  .photo { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; border: 1px dashed var(--line);
+           cursor: pointer; overflow: hidden; background: color-mix(in srgb, var(--paper) 70%, transparent); }
+  .photo input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .photo:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .photo .empty { text-align: center; }
+  .photo .empty b { display: block; font-size: 16px; }
+  .photo .empty span { font-size: 13px; color: var(--sub); }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .photo .swap { position: absolute; right: 8px; bottom: 8px; background: var(--paper); border: 1px solid var(--line);
+                 font-size: 12px; padding: 3px 8px; }
+
+  .go { margin: 4px 20px 24px; padding: 16px; border: 0; background: var(--ink); color: var(--paper);
+        font: 700 16px var(--sans); letter-spacing: .02em; cursor: pointer; transition: transform .1s, opacity .15s; }
+  .go:active:not(:disabled) { transform: translateY(1px); }
+  .go:disabled { opacity: .35; cursor: default; }
+  .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* 결과 */
+  .result { border-top: 3px double var(--line); padding: 24px 20px 8px; }
+  .result-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-bottom: 18px; }
+  .result-head .what { font-size: 13px; color: var(--sub); }
+  .result-head h3 { font-size: 26px; font-weight: 900; letter-spacing: -.03em; line-height: 1.2; text-transform: capitalize; }
+  .stamp { width: 84px; height: 84px; border: 2px solid currentColor; border-radius: 50%; display: grid; place-items: center;
+           text-align: center; font-weight: 900; font-size: 15px; line-height: 1.15; transform: rotate(-8deg);
+           box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 5px currentColor; }
+  .stamp.주의 { color: var(--red); } .stamp.확인 { color: var(--amber); } .stamp.해당, .stamp.정보 { color: var(--sub); }
+
+  .rows { border-top: 1px solid var(--line); }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--soft); }
+  .row:last-child { border-bottom: 1px solid var(--line); }
+  .row .name { font-size: 16px; font-weight: 500; }
+  .lv { font-size: 13px; font-weight: 700; padding: 3px 10px; border: 1.5px solid currentColor; white-space: nowrap; }
+  .lv.주의 { color: #fff; background: var(--red); border-color: var(--red); }
+  .lv.확인 { color: var(--amber); }
+  .lv.해당 { color: var(--sub); border-color: transparent; font-weight: 500; }
+  .lv.정보 { color: var(--sub); border-style: dashed; }
+
+  .facts { margin-top: 16px; display: grid; gap: 6px; font-size: 13px; color: var(--sub); }
+  .facts b { color: var(--ink); font-weight: 500; }
+  .nutri { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); margin-top: 16px; }
+  .nutri div { padding: 10px 8px; text-align: center; }
+  .nutri div + div { border-left: 1px solid var(--line); }
+  .nutri strong { display: block; font-size: 18px; font-weight: 700; }
+  .nutri span { font-size: 12px; color: var(--sub); }
+
+  .skeleton { display: grid; gap: 10px; }
+  .skeleton i { display: block; height: 18px; background: var(--soft); animation: pulse 1.2s ease-in-out infinite; }
+  .skeleton i:first-child { width: 55%; height: 28px; }
+  @keyframes pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton i { animation: none; } * { transition: none !important; } }
+  .err { color: var(--red); font-weight: 500; }
+
+  .foot { margin-top: auto; border-top: 1px solid var(--line); padding: 16px 20px 22px; text-align: center; }
+  .foot .warn { font-size: 12.5px; color: var(--sub); }
+  .foot .sign { font-family: var(--serif); font-size: 15px; margin-top: 8px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <span class="mark">찍먹</span>
+    <span class="tag">Snap first, eat later</span>
+  </header>
+
+  <section class="hero">
+    <p class="kicker">사진으로 알아보는 나만의 음식 정보</p>
+    <h1>찍먹<small>(찍고 먹자)</small></h1>
+    <div class="rules" aria-hidden="true"><i></i><i></i><i></i></div>
+    <p>처음 보는 음식, 내 알레르기부터 확인해요</p>
+  </section>
+
+  <section class="step" aria-labelledby="s1">
+    <h2 id="s1"><span class="no">①</span>내 알레르기</h2>
+    <p class="help">고른 항목은 다음에도 기억해 둘게요.</p>
+    <div class="chips" id="allergens"><span class="help">불러오는 중…</span></div>
+    <p class="count" id="count"></p>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <h2 id="s2"><span class="no">②</span>음식 사진</h2>
+    <p class="help">음식이 화면 가운데 크게 나오게 찍어 주세요.</p>
+    <label class="photo">
+      <input type="file" id="file" accept="image/*" capture="environment">
+      <span class="empty" id="empty"><b>눌러서 찍거나 고르기</b><span>JPG, PNG · 10MB까지</span></span>
+      <img id="preview" alt="고른 음식 사진" hidden>
+      <span class="swap" id="swap" hidden>다시 고르기</span>
+    </label>
+  </section>
+
+  <button class="go" id="go" disabled>확인하기</button>
+
+  <section class="result" id="result" hidden aria-live="polite"></section>
+
+  <footer class="foot">
+    <p class="warn">레시피 통계로 추정한 결과예요. 알레르기가 심하면 꼭 가게에 확인하세요.</p>
+    <p class="sign">ZZIKMEOK · Deep Learning Team 5</p>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const RANK = { '주의': 3, '확인 필요': 2, '정보 부족': 1, '해당 없음': 0 };
+const STAMP = { '주의': '주의', '확인 필요': '확인<br>필요', '정보 부족': '정보<br>부족', '해당 없음': '해당<br>없음' };
+const NUTRI = [['kcal', '칼로리', 'kcal'], ['sodium_mg', '나트륨', 'mg'], ['protein_g', '단백질', 'g']];
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nice = s => s.replace(/_/g, ' ');
+const cls = lv => lv.split(' ')[0];
+
+async function loadAllergens() {
+  const saved = new Set(store.get('allergens') || []);
+  try {
+    const list = await (await fetch('/allergens')).json();
+    $('allergens').innerHTML = list.map(a =>
+      `<label><input type="checkbox" value="${esc(a)}" ${saved.has(a) ? 'checked' : ''}>${esc(a)}</label>`).join('');
+  } catch {
+    $('allergens').innerHTML = '<p class="err">서버에 연결할 수 없어요.</p>';
+  }
+  ready();
+}
+const mine = () => [...document.querySelectorAll('#allergens input:checked')].map(i => i.value);
+$('allergens').addEventListener('change', () => { store.set('allergens', mine()); ready(); });
+
+$('file').addEventListener('change', () => {
+  const f = $('file').files[0];
+  if (!f) return;
+  $('preview').src = URL.createObjectURL(f);
+  $('preview').hidden = $('swap').hidden = false; $('empty').hidden = true;
+  ready();
+});
+
+function ready() {
+  const n = mine().length;
+  $('count').textContent = n ? `${n}개 선택됨: ${mine().join(', ')}` : '하나 이상 골라 주세요.';
+  $('go').disabled = !($('file').files[0] && n);
+}
+
+$('go').addEventListener('click', async () => {
+  const fd = new FormData();
+  fd.append('image', $('file').files[0]);
+  fd.append('allergens', mine().join(','));
+  $('go').disabled = true; $('go').textContent = '확인하는 중…';
+  const box = $('result'); box.hidden = false;
+  box.innerHTML = '<div class="skeleton" aria-label="결과를 불러오는 중"><i></i><i></i><i></i><i></i></div>';
+  box.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  try {
+    const res = await fetch('/analyze', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    box.innerHTML = render(data);
+  } catch (e) {
+    box.innerHTML = `<p class="err">확인하지 못했어요. ${esc(e.message)}</p>`;
+  } finally {
+    $('go').textContent = '확인하기'; ready();
+  }
+});
+
+function render(d) {
+  const levels = Object.values(d.verdict);
+  const worst = levels.reduce((a, b) => (RANK[b] > RANK[a] ? b : a), '해당 없음');
+  const title = d.route === '2단계' ? '처음 보는 음식 같아요'
+              : d.foods.length > 1 ? `${nice(d.foods[0])} 또는 비슷한 음식` : nice(d.foods[0]);
+  const rows = Object.entries(d.verdict).map(([a, lv]) =>
+    `<div class="row"><span class="name">${esc(a)}</span><span class="lv ${cls(lv)}">${esc(lv)}</span></div>`).join('');
+  const nut = NUTRI.filter(([k]) => d.nutrition?.[k] != null);
+  const top = d.candidates?.[0];
+  return `
+    <div class="result-head">
+      <div><p class="what">이 음식은</p><h3>${esc(title)}</h3></div>
+      <div class="stamp ${cls(worst)}" role="img" aria-label="종합 ${esc(worst)}">${STAMP[worst]}</div>
+    </div>
+    <div class="rows">${rows}</div>
+    ${nut.length ? `<div class="nutri">${nut.map(([k, n, u]) =>
+        `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span></div>`).join('')}</div>` : ''}
+    <div class="facts">
+      ${d.other_caution.length ? `<p>그 밖에 자주 들어가는 재료 <b>${d.other_caution.map(esc).join(', ')}</b></p>` : ''}
+      <p>근거 <b>${esc(d.source)}</b>${d.n_recipes ? ` · 레시피 <b>${d.n_recipes.toLocaleString()}개</b>` : ''}</p>
+      ${top ? `<p>모델 확신도 <b>${Math.round(top.prob * 100)}%</b></p>` : ''}
+    </div>`;
+}
+
+loadAllergens();
+</script>
+</body>
+</html>

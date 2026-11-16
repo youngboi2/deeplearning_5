@@ -1,12 +1,15 @@
 """백엔드: 사진 + 내 알레르기 → 판정 결과 JSON.
 
 실행 (저장소 루트에서):  uvicorn backend.main:app --reload
+앱 화면:                 http://localhost:8000
 문서/테스트 화면:        http://localhost:8000/docs
 """
 import io
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
 from knowledge.judge import analyze
@@ -52,3 +55,7 @@ def analyze_photo(image: UploadFile = File(...), allergens: str = Form('')):
         raise HTTPException(400, str(e))
     result['candidates'] = [{'food': c, 'prob': round(p, 4)} for c, p in cands]
     return result
+
+
+# 화면 (frontend/index.html). API 경로보다 뒤에 둬야 /analyze 등을 가리지 않음
+app.mount('/', StaticFiles(directory=Path(__file__).parent.parent / 'frontend', html=True), name='frontend')

@@ -37,7 +37,7 @@
 ## 폴더
 | 폴더 | 내용 | 상태 |
 |---|---|---|
-| `frontend/` | 웹 화면: 알레르기 선택, 카메라, 결과 카드 | 만들 예정 |
+| `frontend/` | `index.html` 웹 화면: 알레르기 선택(기억됨), 카메라, 결과 카드 | 1단계 결과 표시됨 |
 | `backend/` | `main.py` FastAPI: `POST /analyze`(사진 + 알레르기 → 판정 JSON), `GET /allergens` | 1단계 연결됨, 설명은 LLM 연결 후 |
 | `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
 | `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `candidates.csv` 새 음식 후보 74종, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
@@ -59,7 +59,7 @@ pip install -r requirements.txt
 # 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
 uvicorn backend.main:app --reload
 ```
-http://localhost:8000/docs 에서 `/analyze`에 사진·알레르기(`밀,땅콩`)를 넣어 바로 시험할 수 있다.
+http://localhost:8000 이 앱 화면(폰은 같은 와이파이에서 `http://PC주소:8000`, 카메라는 https 배포 후), http://localhost:8000/docs 는 API 시험 화면.
 LLM API 키·서버 계정은 `.env`에만 둔다 (gitignore 됨). 절대 커밋하지 않는다.
 
 ## 출처
