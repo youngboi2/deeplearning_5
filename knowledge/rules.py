@@ -43,12 +43,13 @@ def rx(words):
     return '(?<![a-z])(?:' + '|'.join(re.escape(w.rstrip('s')) + 's?' for w in words) + ')(?![a-z])'
 
 
-def match(titles, classes):
-    """제목 Series → {클래스: (이름만 일치 mask, 규칙 적용 후 mask)}"""
+def match(titles, classes, alias=None):
+    """제목 Series → {클래스: (이름만 일치 mask, 규칙 적용 후 mask)}. alias: 추가 별칭 {클래스: [이름...]}"""
     head = titles.fillna('').str.lower().str.split(' with ').str[0]  # 'with' 앞부분이 진짜 요리 이름
+    alias = {**ALIAS, **(alias or {})}
     out = {}
     for c in classes:
-        words = ALIAS.get(c, [c.replace('_', ' ')])
+        words = alias.get(c, [c.replace('_', ' ')])
         toks = {t.rstrip('s') for w in words for t in w.split()}
         bad = [f for f in FORMS if f not in toks]  # 이 음식 이름에 없는 '다른 요리 형태' 단어
         raw = head.str.contains(rx(words), regex=True)

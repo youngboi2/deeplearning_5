@@ -13,12 +13,15 @@ TF = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(),
                 T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
 
-def load_model(model_dir):
-    model_dir = Path(model_dir)
-    classes = (model_dir / 'classes.txt').read_text(encoding='utf-8').split()
+HERE = Path(__file__).parent
+WEIGHTS = HERE / 'weights' / 'best.pt'
+
+
+def load_model(weights=WEIGHTS, classes=HERE / 'classes.txt'):
+    classes = Path(classes).read_text(encoding='utf-8').split()
     m = models.convnext_tiny()
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, len(classes))
-    m.load_state_dict(torch.load(model_dir / 'best.pt', map_location='cpu'))
+    m.load_state_dict(torch.load(weights, map_location='cpu', weights_only=True))
     return m.eval(), classes
 
 

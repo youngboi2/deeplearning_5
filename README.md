@@ -34,26 +34,28 @@
 | 폴더 | 내용 | 상태 |
 |---|---|---|
 | `frontend/` | 웹 화면: 알레르기 선택, 카메라, 결과 카드 | 만들 예정 |
-| `backend/` | FastAPI `/analyze`: 사진 → 모델 → 판정 → 설명을 순서대로 불러 결과 반환 | 만들 예정 |
+| `backend/` | `main.py` FastAPI: `POST /analyze`(사진 + 알레르기 → 판정 JSON), `GET /allergens` | 1단계 연결됨, 설명은 LLM 연결 후 |
 | `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
-| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
+| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `candidates.csv` 새 음식 후보 74종, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
 | `llm/` | 이름 추정, 재료 추정, 설명 | 빈 함수 |
-| `notebooks/` | `01` EDA·전처리(알레르기·나트륨), `02` 새 음식 후보 집계 | 있음 |
+| `notebooks/` | `01` EDA·전처리(알레르기·나트륨), `02` 새 음식 후보 집계, `03` 표 확장(175종)·사진 수집 | 03은 실행 전 |
 | `docs/plan.md` | 단계별 할 일 | 있음 |
 
-## 데이터 3단계 (깃에는 ③만)
+## 데이터 (깃에는 ③만)
 | 파일 | 뭐냐 | 위치 |
 |---|---|---|
 | ① `1M_Final.csv` | 원본 레시피 100만 개 | 드라이브 `26-2 딥러닝/data1/` (재배포 금지) |
 | ② `food101_recipes.parquet` | ①에서 Food-101 음식과 겹치는 레시피만 (약 11만 7천 개) — "왜요?" 근거용 | 드라이브 `data1/` (재배포 금지) |
-| ③ `food_table.csv` | ②에 알레르기 규칙을 돌린 음식별 요약표 (101행) — 1단계 판정용 | `knowledge/` |
+| ③ `food_table.csv` | ②에 알레르기 규칙을 돌린 음식별 요약표 (지금 101행 → 03 실행 후 175행) — 판정용 | `knowledge/` |
+| ④ `images/*.parquet` | 레시피 사진을 줄여 모은 것 (음식당 최대 400장) — CLIP·처음 보는 음식 감지 학습용 | 드라이브 `data1/` (재배포 금지) |
 
-## 실행 (백엔드가 생기면)
+## 실행
 ```bash
 pip install -r requirements.txt
 # 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
 uvicorn backend.main:app --reload
 ```
+http://localhost:8000/docs 에서 `/analyze`에 사진·알레르기(`밀,땅콩`)를 넣어 바로 시험할 수 있다.
 LLM API 키·서버 계정은 `.env`에만 둔다 (gitignore 됨). 절대 커밋하지 않는다.
 
 ## 출처
