@@ -36,7 +36,7 @@
 | `frontend/` | 웹 화면: 알레르기 선택, 카메라, 결과 카드 | 만들 예정 |
 | `backend/` | FastAPI `/analyze`: 사진 → 모델 → 판정 → 설명을 순서대로 불러 결과 반환 | 만들 예정 |
 | `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
-| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `food_table.csv` 결과표, `lookup.py` | 판정·검색 추가 예정 |
+| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
 | `llm/` | 이름 추정, 재료 추정, 설명 | 빈 함수 |
 | `notebooks/` | `01` EDA·전처리(알레르기·나트륨), `02` 새 음식 후보 집계 | 있음 |
 | `docs/plan.md` | 단계별 할 일 | 있음 |
