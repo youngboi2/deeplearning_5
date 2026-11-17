@@ -82,7 +82,9 @@ explain(cls, info, question=None) -> str | None              # info = analyze() 
 | `data1/images/{label}.parquet` | 레시피 사진 (음식당 최대 400, 짧은 변 256px JPEG). `recipe_idx`, `label`, `title`, `image1`, `jpg`(bytes), `md5` |
 | `data1/images/_fake_md5.csv` | 같은 그림이 반복된 가짜 사진 md5 → **학습·평가에서 제외** |
 | `data1/food-101.tar.gz` | Food-101 (101종 × 1,000장). 풀면 `food-101/images/{class}/{id}.jpg`, `meta/train.txt`·`test.txt` |
-| `찍먹_실험기록/best/convnext_tiny/best.pt` | 분류 모델 state_dict → 로컬 `modeling/weights/best.pt` |
+| `찍먹_실험기록/best/convnext_base/best.pt` | **앱 분류 모델** (주한솔, timm ConvNeXt-Base, test 93.4%) → 로컬 `modeling/weights/best.pt`. `model.py`가 Tiny/Base를 자동 구분 |
+| `찍먹_실험기록/best/convnext_tiny/best.pt` | 처음 모델 (torchvision ConvNeXt-Tiny, test 88.8%), 비교용 |
+| `modeling/calibration.json` (깃) | notebooks/05 결과 `{model, temperature, T_ONE, T_KNOWN}`. `model`이 불러온 모델과 같을 때만 보정 |
 | `찍먹_실험기록/best/clip_base/` | **앱이 쓰는 검색 목록** (04-3, 기본 CLIP): `index_emb.npy`(레시피 글 벡터 N×512, fp16, 정규화됨), `index_meta.parquet`(`recipe_idx`, `label`, `title`, 19항목 0/1, 같은 순서) → 로컬 `knowledge/index/` |
 | `찍먹_실험기록/best/clip/`, `best/clip2/` | 04·04-2 파인튜닝 실험 결과 (앱에서는 안 씀) |
 | `찍먹_실험기록/표/` | 실험 결과표 (`food_table.csv`, `clip_결과.csv`, `convnext_vs_clip.csv`, `사진수집_요약.csv`). 새 결과도 여기로 |

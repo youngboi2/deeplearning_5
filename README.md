@@ -59,7 +59,7 @@
 ## 실행
 ```bash
 pip install -r requirements.txt
-# 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
+# 드라이브 찍먹_실험기록/best/convnext_base/best.pt (한솔 최고 모델) → modeling/weights/best.pt
 # 드라이브 찍먹_실험기록/best/clip_base/ 두 파일 → knowledge/index/ (2단계 검색, notebooks/04-3이 만듦)
 uvicorn backend.main:app --reload
 ```
