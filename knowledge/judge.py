@@ -4,7 +4,7 @@
   decide()  : 1등 확률로 1단계(1등만 / 후보 합치기) 또는 2단계(처음 보는 음식) 결정
   merge()   : 후보 여러 개의 비율 줄을 '가장 위험한 쪽'으로 합침
   judge()   : 비율 줄 + 내 알레르기 → 항목별 단계
-  analyze() : 위를 순서대로 (2단계는 아직 RAG 연결 전)
+  analyze() : 위를 순서대로. 처음 보는 음식은 stage2(= search.search, CLIP 검색) 결과를 같은 judge()로 판정
 
 자체 검사: 저장소 루트에서  python -m knowledge.judge
 """
@@ -50,14 +50,22 @@ def judge(r, my_allergens):
                 n_recipes=r['n_recipes'], nutrition=r['nutrition'], source=r['source'])
 
 
-def analyze(cands, my_allergens):
-    """모델 후보 → 판정. 2단계(RAG)는 아직 없어서 '확인 필요'로 돌려줌."""
+def analyze(cands, my_allergens, stage2=None):
+    """모델 후보 → 판정.
+    stage2: 처음 보는 음식일 때 부르는 함수 () -> (비율 줄, [(음식, 점수)]) — 백엔드가 search.search(사진)를 감싸 넘김.
+    없거나(검색 목록 없음) None을 돌려주면 '확인 필요'로 돌려줌."""
     route = decide(cands)
     use = cands[:1] if route == 'one' else cands[:3]
     rows = [r for c, _ in use if (r := row(c))] if route != 'unknown' else []
-    if not rows:  # 처음 보는 음식 → 2단계 자리 (search.py / llm/ 연결 예정)
+    if not rows:  # 처음 보는 음식 → 2단계 (CLIP 검색, 같은 규칙으로 판정)
+        hit = stage2() if stage2 else None
+        if hit:
+            r, foods = hit
+            out = judge(r, my_allergens)
+            out.update(route='2단계', foods=[c for c, _ in foods[:3]])
+            return out
         return dict(route='2단계', foods=[], verdict={a: '확인 필요' for a in my_allergens},
-                    other_caution=[], n_recipes=0, nutrition={}, source='정보 없음 (2단계 연결 전)')
+                    other_caution=[], n_recipes=0, nutrition={}, source='정보 없음 (검색 목록 없음)')
     out = judge(merge(rows), my_allergens)
     out.update(route='1단계-1등' if route == 'one' else '1단계-합치기', foods=[c for c, _ in use])
     return out
@@ -73,6 +81,13 @@ if __name__ == '__main__':
 
     assert analyze([('takoyaki', 0.95), ('gyoza', 0.02), ('dumplings', 0.01)], ['고등어'])['verdict']['고등어'] == '정보 부족'
     assert analyze([('cheesecake', 0.2), ('tiramisu', 0.15), ('cannoli', 0.1)], ['땅콩'])['route'] == '2단계'
+
+    # 2단계: 검색 결과(같은 모양의 비율 줄)도 같은 규칙으로 판정
+    fake = {a: 0.0 for a in ALLERGENS} | {'새우': 0.8, 'n_recipes': 30, 'nutrition': {}, 'source': 'CLIP 검색'}
+    s = analyze([('cheesecake', 0.2), ('tiramisu', 0.15), ('cannoli', 0.1)], ['새우', '땅콩'],
+                stage2=lambda: (fake, [('pad_thai', 20.1), ('pho', 3.2)]))
+    assert s['route'] == '2단계' and s['foods'] == ['pad_thai', 'pho'] and s['source'] == 'CLIP 검색'
+    assert s['verdict'] == {'새우': '주의', '땅콩': '해당 없음'}
     try:
         judge(row('ramen'), ['peanut'])
         raise AssertionError('잘못된 항목을 받아들임')

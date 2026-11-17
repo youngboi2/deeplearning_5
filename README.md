@@ -40,7 +40,7 @@
 | `frontend/` | `index.html` 웹 화면: 알레르기 선택(기억됨), 카메라, 결과 카드 | 1단계 결과 표시됨 |
 | `backend/` | `main.py` FastAPI: `POST /analyze`(사진 + 알레르기 → 판정 JSON), `GET /allergens` | 1단계 연결됨, 설명은 LLM 연결 후 |
 | `modeling/` | `model.py` 예측(후보 3개 + 확률), `classes.txt` 101종 목록, `weights/best.pt`(깃 제외) | 예측 코드 있음 |
-| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `candidates.csv` 새 음식 후보 74종, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기 | 1단계 완료, 2단계 검색 예정 |
+| `knowledge/` | 룰베이스: `rules.py` 규칙, `build_table.py` 표 만들기, `candidates.csv` 새 음식 후보 74종, `food_table.csv` 결과표, `lookup.py` 표 찾기, `judge.py` 판정·1/2단계 분기, `search.py` 2단계 CLIP 검색 | 1·2단계 연결 (2단계는 `knowledge/index/` 필요) |
 | `llm/` | `guess.py` 이름·재료 추정, `explain.py` 설명 | 빈 함수 |
 | `evaluation/` | `정답지.csv` 알레르기 정답지 (사람 확인) | 틀만 있음 |
 | `AGENTS.md` | AI 코딩 도구용 규칙·데이터 형식·함수 모양 (`CLAUDE.md`가 불러옴) | 있음 |
@@ -60,6 +60,7 @@
 ```bash
 pip install -r requirements.txt
 # 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
+# 드라이브 찍먹_실험기록/best/clip_base/ 두 파일 → knowledge/index/ (2단계 검색, notebooks/04-3이 만듦)
 uvicorn backend.main:app --reload
 ```
 http://localhost:8000 이 앱 화면(폰은 같은 와이파이에서 `http://PC주소:8000`, 카메라는 https 배포 후), http://localhost:8000/docs 는 API 시험 화면.

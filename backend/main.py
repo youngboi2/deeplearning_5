@@ -12,6 +12,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
+from knowledge import search
 from knowledge.judge import analyze
 from knowledge.lookup import ALLERGENS
 from modeling.model import WEIGHTS, load_model, predict
@@ -49,8 +50,9 @@ def analyze_photo(image: UploadFile = File(...), allergens: str = Form('')):
 
     mine = [a.strip() for a in allergens.split(',') if a.strip()]
     cands = predict(model(), img)
+    stage2 = (lambda: search.search(img)) if search.available() else None  # 검색 목록(knowledge/index/) 있을 때만
     try:
-        result = analyze(cands, mine)
+        result = analyze(cands, mine, stage2)
     except ValueError as e:  # 모르는 알레르기 이름
         raise HTTPException(400, str(e))
     result['candidates'] = [{'food': c, 'prob': round(p, 4)} for c, p in cands]

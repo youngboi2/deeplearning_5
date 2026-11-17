@@ -242,6 +242,7 @@ function render(d) {
     ${nut.length ? `<div class="nutri">${nut.map(([k, n, u]) =>
         `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span></div>`).join('')}</div>` : ''}
     <div class="facts">
+      ${d.route === '2단계' && d.foods.length ? `<p>비슷한 레시피 <b>${d.foods.map(f => esc(nice(f))).join(', ')}</b></p>` : ''}
       ${d.other_caution.length ? `<p>그 밖에 자주 들어가는 재료 <b>${d.other_caution.map(esc).join(', ')}</b></p>` : ''}
       <p>근거 <b>${esc(d.source)}</b>${d.n_recipes ? ` · 레시피 <b>${d.n_recipes.toLocaleString()}개</b>` : ''}</p>
       ${top ? `<p>모델 확신도 <b>${Math.round(top.prob * 100)}%</b></p>` : ''}

@@ -3,6 +3,8 @@ modeling/weights/
 *.pt
 *.pth
 *.parquet
+*.npy
+knowledge/index/
 1M_Final.csv
 food-101/
 

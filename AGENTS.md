@@ -24,19 +24,21 @@
 | `knowledge/build_table.py` | 1M_Final → `food_table.csv` (Colab에서 실행) | (완료) |
 | `knowledge/lookup.py` | 음식 이름 → 비율 줄 (`row`, `ALLERGENS`) | (완료) |
 | `knowledge/judge.py` | 1/2단계 분기 + 판정 (`analyze`) | 박중현(2단계), 주한솔(기준값) |
-| `knowledge/search.py` | (만들 것) 사진 → CLIP → 비슷한 레시피 → 비율 줄 | 박중현 |
+| `knowledge/search.py` | 2단계: 사진 → 기본 CLIP → 비슷한 레시피 30개 → 비율 줄 (`search`, `available`). 검색 목록은 `knowledge/index/`(깃 제외) | 박중현 |
 | `modeling/model.py` | ConvNeXt-Tiny 로드·예측 (`load_model`, `predict`, `TF`) | 주한솔 |
 | `llm/` | `guess.py`(이름·재료 추정), `explain.py`(설명) — 지금 빈 함수 | 김유라 |
 | `evaluation/` | 알레르기 정답지 + 평가 스크립트 | 서준영 |
-| `notebooks/` | 01 EDA, 02 후보 집계, 03 표 확장·사진 수집, 04 CLIP. 새 노트북은 `05_...`부터 | 각자 |
+| `notebooks/` | 01 EDA, 02 후보 집계, 03 표 확장·사진 수집, 04·04-2 CLIP 실험, 04-3 앱 검색 목록. 새 노트북은 `05_...`부터 | 각자 |
 
 ## 실행 · 자체 검사
 ```bash
 pip install -r requirements.txt
 python -m knowledge.judge          # 판정 자체 검사 (assert). 판정 코드 고치면 꼭 돌릴 것
+python -m knowledge.search         # 검색 합치기 자체 검사 (torch 없이)
 uvicorn backend.main:app --reload  # http://localhost:8000 화면, /docs API 시험
 ```
 `modeling/weights/best.pt`가 없으면 `/analyze`는 503 (화면·판정 코드는 가중치 없이도 개발 가능).
+`knowledge/index/`(04-3 결과 두 파일)가 없으면 2단계는 `확인 필요`로만 나온다. 있으면 첫 2단계 요청 때 CLIP(약 600MB)을 받아 온다.
 
 ## 연결 지점 (함수 모양)
 ```python
@@ -49,14 +51,14 @@ predict(model, pil_img, k=3) -> [(class, prob), ...]        # 확률 높은 순
  'source': '레시피 통계'}              # 2단계는 'CLIP 검색', LLM 재료 추정은 'LLM 추정'
 
 # 판정 (knowledge/judge.py)
-analyze(cands, my_allergens) -> {
+analyze(cands, my_allergens, stage2=None) -> {   # stage2 = lambda: search(img), 처음 보는 음식일 때만 부름
   'route': '1단계-1등' | '1단계-합치기' | '2단계',
   'foods': [...], 'verdict': {알레르기: '주의'|'확인 필요'|'해당 없음'|'정보 부족'},
   'other_caution': [...], 'n_recipes': int, 'nutrition': {...}, 'source': str}
 # backend가 여기에 'candidates': [{'food','prob'}] 추가. 설명 붙이면 'explanation': str | None
 
-# 2단계 검색 (knowledge/search.py, 만들 것)
-search(pil_img, k=30) -> (비율 줄, [(class, score), ...])   # 비율 줄은 위와 같은 모양
+# 2단계 검색 (knowledge/search.py) — 학습 안 한 기본 CLIP (04·04-2 결과: 파인튜닝은 주의놓침이 더 나빠서 안 씀)
+search(pil_img, k=30) -> (비율 줄, [(class, 유사도 합), ...])   # 비율 줄은 위와 같은 모양, source='CLIP 검색', nutrition={}
 
 # LLM (llm/) — 연결 전이면 None 반환, 앱은 None이어도 동작해야 함
 guess_name(pil_img) -> [(영어 음식 이름, 0~1)] | None
@@ -77,7 +79,8 @@ explain(cls, info, question=None) -> str | None              # info = analyze() 
 | `data1/images/_fake_md5.csv` | 같은 그림이 반복된 가짜 사진 md5 → **학습·평가에서 제외** |
 | `data1/food-101.tar.gz` | Food-101 (101종 × 1,000장). 풀면 `food-101/images/{class}/{id}.jpg`, `meta/train.txt`·`test.txt` |
 | `찍먹_실험기록/best/convnext_tiny/best.pt` | 분류 모델 state_dict → 로컬 `modeling/weights/best.pt` |
-| `찍먹_실험기록/best/clip/` | 04 결과: `clip_ft.pt`(fp16 state_dict), `index_emb.npy`(레시피 벡터, fp16, 정규화됨), `index_meta.parquet`(`recipe_idx`, `label`, 같은 순서) |
+| `찍먹_실험기록/best/clip_base/` | **앱이 쓰는 검색 목록** (04-3, 기본 CLIP): `index_emb.npy`(레시피 글 벡터 N×512, fp16, 정규화됨), `index_meta.parquet`(`recipe_idx`, `label`, `title`, 19항목 0/1, 같은 순서) → 로컬 `knowledge/index/` |
+| `찍먹_실험기록/best/clip/`, `best/clip2/` | 04·04-2 파인튜닝 실험 결과 (앱에서는 안 씀) |
 | `찍먹_실험기록/표/` | 실험 결과표 (`food_table.csv`, `clip_결과.csv`, `convnext_vs_clip.csv`, `사진수집_요약.csv`). 새 결과도 여기로 |
 
 깃 안 데이터:
