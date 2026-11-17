@@ -35,6 +35,16 @@ def model():
     return load_model()
 
 
+@app.on_event('startup')
+def warm_up():
+    """서버가 켜지면 뒤에서 모델을 미리 불러옴 (06: 첫 2단계 검색이 CLIP 받기·불러오기로 32초). 서버는 기다리지 않고 바로 뜸.
+    ponytail: 불러오는 도중 들어온 첫 요청은 한 번 더 불러올 수 있음 (lru_cache에 잠금 없음) — 문제 되면 Lock 추가."""
+    if WEIGHTS.exists():
+        _POOL.submit(model)
+    if search.available():
+        _POOL.submit(search._load)
+
+
 @app.get('/allergens')
 def allergens():
     """화면의 알레르기 체크박스 목록 (19개)."""

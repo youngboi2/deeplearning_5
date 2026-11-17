@@ -52,8 +52,8 @@ predict(model, pil_img, k=3) -> [(class, prob), ...]        # 확률 높은 순
 
 # 판정 (knowledge/judge.py)
 analyze(cands, my_allergens, stage2=None) -> {   # stage2 = lambda: search(img), 처음 보는 음식일 때만 부름
-  'route': '1단계-1등' | '1단계-합치기' | '2단계',
-  'foods': [...], 'verdict': {알레르기: '주의'|'확인 필요'|'해당 없음'|'정보 부족'},
+  'route': '1단계-1등' | '1단계-합치기' | '1단계-합치기+CLIP' | '2단계',   # 합치기(애매함)는 stage2 결과도 같이 합침
+  'foods': [...], 'similar': [CLIP이 찾은 비슷한 음식 3개] (없으면 []), 'verdict': {알레르기: '주의'|'확인 필요'|'해당 없음'|'정보 부족'},
   'other_caution': [...], 'n_recipes': int, 'nutrition': {...}, 'source': str}
 # backend가 여기에 추가: 'candidates': [{'food','prob'}], 'llm_guess': [{'food','conf'}] (2단계만, 없으면 []),
 #                        'explanation': str | None   (LLM 호출은 각각 최대 15초)
