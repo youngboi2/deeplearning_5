@@ -1,5 +1,7 @@
 # AGENTS.md — AI 코딩 도구용 안내 (Claude Code · Codex · Gemini 공통)
 
+> **먼저 [`docs/인수인계_AI용.md`](docs/인수인계_AI용.md)를 읽는다** (지금 상태·결정·다음 할 일).
+
 사람용 설명은 `README.md`, `docs/진행상황.md`. 이 파일은 **AI가 작업 전에 읽는 규칙·구조·데이터 형식**이다.
 팀원별 할 일과 완료 기준은 `docs/역할분담.md`. 사용자가 자기 이름을 말하면 그 사람 부분만 작업한다.
 
@@ -69,7 +71,7 @@ guess_name(pil_img) -> [(영어 음식 이름, 0~1)] | None
 guess_ingredients(food_name) -> ['flour', 'egg', ...] | None   # 영어 재료 → rules.allergen_flags로 판정
 explain(cls, info, question=None) -> str | None              # info = analyze() 결과
 ```
-판정 기준 상수(`CAUTION 0.6`, `CHECK 0.2`, `MIN_RECIPES 30`, `T_ONE 0.8`, `T_KNOWN 0.3`)는 `judge.py` 맨 위. 임시값이며 실험으로 다시 정한다.
+판정 기준 상수(`CAUTION 0.6`, `CHECK 0.2`, `MIN_RECIPES 30`, `T_ONE 0.95`, `T_KNOWN 0.6`)는 `judge.py` 맨 위. T_ONE·T_KNOWN은 05(Base, 보정 후 확률 기준)로 정함 — 근거는 docs/진행상황.md 12.
 
 ## 데이터 (드라이브, 깃 밖)
 팀 공유 드라이브 폴더 `26-2 딥러닝`. Colab에서는 `/content/drive/MyDrive/26-2 딥러닝` (바로가기 추가 필요).

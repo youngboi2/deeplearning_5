@@ -14,7 +14,7 @@ from knowledge.lookup import ALLERGENS, row
 # EDA v2 임시 기준. 정답지·검증 데이터로 다시 정한다 (docs/plan.md 6, 9번)
 CAUTION, CHECK = 0.6, 0.2   # 레시피 비율 60% 이상 주의, 20% 이상 확인 필요
 MIN_RECIPES = 30            # 이보다 적으면 '해당 없음' 대신 '정보 부족'
-T_ONE, T_KNOWN = 0.8, 0.3   # 1등 확률 ≥0.8 → 1등만 / ≥0.3 → 상위 3개 합치기 / 그 아래 → 2단계
+T_ONE, T_KNOWN = 0.95, 0.6  # 보정된(T) 1등 확률 ≥0.95 → 1등만 / ≥0.6 → 상위 3개 합치기(+CLIP) / 그 아래 → 2단계. 근거: notebooks/05 (Base), docs/진행상황.md 12
 
 
 def decide(cands):
@@ -81,11 +81,11 @@ def analyze(cands, my_allergens, stage2=None):
 
 
 if __name__ == '__main__':
-    r = analyze([('ramen', 0.92), ('pho', 0.05), ('udon', 0.01)], ['밀', '땅콩'])
+    r = analyze([('ramen', 0.97), ('pho', 0.05), ('udon', 0.01)], ['밀', '땅콩'])
     assert r['route'] == '1단계-1등' and r['foods'] == ['ramen'] and r['verdict']['밀'] in ('주의', '확인 필요')
 
     # 라멘(밀 높음) ↔ 쌀국수: 애매하면 합쳐서 밀을 놓치지 않아야 함
-    m = analyze([('pho', 0.55), ('ramen', 0.35), ('pad_thai', 0.05)], ['밀'])
+    m = analyze([('pho', 0.65), ('ramen', 0.3), ('pad_thai', 0.05)], ['밀'])
     assert m['route'] == '1단계-합치기' and m['verdict']['밀'] == judge(row('ramen'), ['밀'])['verdict']['밀']
 
     assert analyze([('takoyaki', 0.95), ('gyoza', 0.02), ('dumplings', 0.01)], ['고등어'])['verdict']['고등어'] == '정보 부족'
@@ -99,11 +99,11 @@ if __name__ == '__main__':
     assert s['verdict'] == {'새우': '주의', '땅콩': '해당 없음'} and s['similar'] == ['pad_thai', 'pho']
 
     # 애매한 1단계(합치기)도 CLIP 결과를 같이 합침: 후보에 없던 새우를 놓치지 않음
-    amb = [('pho', 0.55), ('ramen', 0.35), ('pad_thai', 0.05)]
+    amb = [('pho', 0.65), ('ramen', 0.3), ('pad_thai', 0.05)]
     assert m['verdict'] == analyze(amb, ['밀'])['verdict'] and m['similar'] == []      # 검색 없으면 그대로
     mc = analyze(amb, ['새우'], stage2=lambda: (fake, [('pad_thai', 20.1)]))
     assert mc['route'] == '1단계-합치기+CLIP' and mc['verdict']['새우'] == '주의' and mc['similar'] == ['pad_thai']
-    assert analyze([('ramen', 0.92)], ['새우'], stage2=lambda: (fake, []))['route'] == '1단계-1등'  # 확신 높으면 검색 안 함
+    assert analyze([('ramen', 0.97)], ['새우'], stage2=lambda: (fake, []))['route'] == '1단계-1등'  # 확신 높으면 검색 안 함
     try:
         judge(row('ramen'), ['peanut'])
         raise AssertionError('잘못된 항목을 받아들임')

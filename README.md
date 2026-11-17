@@ -61,9 +61,13 @@
 pip install -r requirements.txt
 # 드라이브 찍먹_실험기록/best/convnext_base/best.pt (한솔 최고 모델) → modeling/weights/best.pt
 # 드라이브 찍먹_실험기록/best/clip_base/ 두 파일 → knowledge/index/ (2단계 검색, notebooks/04-3이 만듦)
-uvicorn backend.main:app --reload
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
+# (다른 터미널) 폰·다른 사람이 쓰려면 ngrok으로 공개 주소 열기
+ngrok http 8000
 ```
-http://localhost:8000 이 앱 화면(폰은 같은 와이파이에서 `http://PC주소:8000`, 카메라는 https 배포 후), http://localhost:8000/docs 는 API 시험 화면.
+http://localhost:8000 이 앱 화면, http://localhost:8000/docs 는 API 시험 화면.
+폰은 ngrok이 보여주는 `https://...ngrok-free.app` 주소로 접속. 쓸 때만 켜고 끝나면 둘 다 Ctrl+C.
+(화면의 사진 버튼은 `<input type="file" capture>`라 http에서도 폰 카메라가 열린다. https가 꼭 필요한 건 실시간 카메라 미리보기(getUserMedia)뿐 — 지금 앱은 안 씀.)
 LLM API 키·서버 계정은 `.env`에만 둔다 (gitignore 됨). 절대 커밋하지 않는다.
 
 ## 출처
