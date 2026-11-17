@@ -6,3 +6,6 @@ torchvision
 pillow
 pandas
 pyarrow
+google-genai
+python-dotenv
+requests
