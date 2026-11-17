@@ -60,9 +60,12 @@
 ```bash
 pip install -r requirements.txt
 # 드라이브 찍먹_실험기록/best/convnext_tiny/best.pt → modeling/weights/best.pt
-uvicorn backend.main:app --reload
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
+# (다른 터미널) 폰에서 쓰려면 ngrok으로 https 주소 열기
+ngrok http 8000
 ```
-http://localhost:8000 이 앱 화면(폰은 같은 와이파이에서 `http://PC주소:8000`, 카메라는 https 배포 후), http://localhost:8000/docs 는 API 시험 화면.
+http://localhost:8000 이 앱 화면, http://localhost:8000/docs 는 API 시험 화면.
+폰은 ngrok이 보여주는 `https://...ngrok-free.app` 주소로 접속 (폰 카메라는 https에서만 열림). 쓸 때만 켜고 끝나면 둘 다 Ctrl+C.
 LLM API 키·서버 계정은 `.env`에만 둔다 (gitignore 됨). 절대 커밋하지 않는다.
 
 ## 출처
