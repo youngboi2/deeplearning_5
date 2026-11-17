@@ -110,6 +110,10 @@
   .nutri div + div { border-left: 1px solid var(--line); }
   .nutri strong { display: block; font-size: 18px; font-weight: 700; }
   .nutri span { font-size: 12px; color: var(--sub); }
+  .nutri .day { display: block; font-size: 11.5px; font-style: normal; color: var(--sub); line-height: 1.35; margin-top: 2px; }
+  .nutri .hi { display: inline-block; margin-top: 5px; padding: 1px 8px; font-size: 12px; font-weight: 700;
+               background: var(--ink); color: var(--paper); }
+  .nutri-cap { font-size: 12px; color: var(--sub); margin-top: 6px; }
 
   .skeleton { display: grid; gap: 10px; }
   .skeleton i { display: block; height: 18px; background: var(--soft); animation: pulse 1.2s ease-in-out infinite; }
@@ -171,6 +175,12 @@ const $ = id => document.getElementById(id);
 const RANK = { '주의': 3, '확인 필요': 2, '정보 부족': 1, '해당 없음': 0 };
 const STAMP = { '주의': '주의', '확인 필요': '확인<br>필요', '정보 부족': '정보<br>부족', '해당 없음': '해당<br>없음' };
 const NUTRI = [['kcal', '칼로리', 'kcal'], ['sodium_mg', '나트륨', 'mg'], ['protein_g', '단백질', 'g']];
+// 나트륨 '높음': 1인분이 하루 기준 2,000mg의 절반 이상. 이유: evaluation/나트륨_기준.md
+const SODIUM_DAY = 2000, SODIUM_HIGH = 0.5;
+const sodium = mg => `<em class="day">하루 기준 ${Math.round(mg / SODIUM_DAY * 100)}%</em>`
+  + (mg >= SODIUM_DAY * SODIUM_HIGH ? '<b class="hi">높음</b>' : '');
+const NO_NUTRI = { '1단계-합치기': '후보 음식이 여러 개라 칼로리·나트륨은 보여 드리지 않아요.',
+                   '2단계': '처음 보는 음식이라 칼로리·나트륨은 보여 드리지 않아요.' };
 const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
                 set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -241,11 +251,14 @@ function render(d) {
     </div>
     <div class="rows">${rows}</div>
     ${nut.length ? `<div class="nutri">${nut.map(([k, n, u]) =>
-        `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span></div>`).join('')}</div>` : ''}
+        `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span>${
+          k === 'sodium_mg' ? sodium(d.nutrition[k]) : ''}</div>`).join('')}</div>
+      <p class="nutri-cap">1인분 기준 (레시피 중앙값)</p>` : ''}
     ${d.explanation ? `<p class="explain">${esc(d.explanation)}</p>` : ''}
     <div class="facts">
       ${d.similar?.length ? `<p>비슷한 레시피 <b>${d.similar.map(f => esc(nice(f))).join(', ')}</b></p>` : ''}
       ${d.llm_guess?.length ? `<p>AI 추정 이름 <b>${esc(nice(d.llm_guess[0].food))}</b> (추정)</p>` : ''}
+      ${!nut.length && NO_NUTRI[d.route] ? `<p>${NO_NUTRI[d.route]}</p>` : ''}
       ${d.other_caution.length ? `<p>그 밖에 자주 들어가는 재료 <b>${d.other_caution.map(esc).join(', ')}</b></p>` : ''}
       <p>근거 <b>${esc(d.source)}</b>${d.n_recipes ? ` · 레시피 <b>${d.n_recipes.toLocaleString()}개</b>` : ''}</p>
       ${top ? `<p>모델 확신도 <b>${Math.round(top.prob * 100)}%</b></p>` : ''}
