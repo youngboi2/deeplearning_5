@@ -59,11 +59,13 @@ def load(pred_path):
 
 
 def score(sheet, preds):
-    """방식마다 칸 종류 개수 + 1등이 틀린 사진만 따로 + 놓침이 생긴 (실제 → 1등, 항목) 개수."""
+    """방식마다 칸 종류 개수 + 1등이 틀린 사진만 따로 + 놓침이 생긴 (실제 → 1등, 항목) 개수
+    + 놓침 원인 (정답 음식을 알아도 놓치는 칸이면 '표·룰 탓', 아니면 '사진 AI 탓')."""
+    oracle = [POLICIES['정답 음식을 알 때'](p) for p in preds]
     res = {}
     for name, fn in POLICIES.items():
-        all_, wrong, why = Counter(), Counter(), Counter()
-        for p in preds:
+        all_, wrong, why, cause = Counter(), Counter(), Counter(), Counter()
+        for p, o in zip(preds, oracle):
             v, top1 = fn(p), p['cands'][0][0]
             for a in ALLERGENS:
                 k = KIND[sheet[p['true']][a]][v[a]]
@@ -72,7 +74,8 @@ def score(sheet, preds):
                     wrong[k] += 1
                 if k == '놓침':
                     why[(p['true'], top1 if name != '정답 음식을 알 때' else p['true'], a)] += 1
-        res[name] = dict(all=all_, wrong=wrong, why=why)
+                    cause['표·룰 탓' if o[a] == '해당 없음' else '사진 AI 탓'] += 1
+        res[name] = dict(all=all_, wrong=wrong, why=why, cause=cause)
     return res
 
 
@@ -114,6 +117,19 @@ def main(pred_path):
         '## 전체 사진',
         *table(res, 'all', pos, neg),
         '',
+        '## 놓침을 원인별로',
+        '- **표·룰 탓**: 정답 음식을 알아도 놓치는 칸이다. 레시피 통계표나 재료 규칙을 고쳐야 줄어든다. '
+        '이번 정답지에서는 ' + ', '.join(f'{t} {a}' for (t, _, a) in res['정답 음식을 알 때']['why']) + '.',
+        '- **사진 AI 탓**: 음식을 잘못 봐서 놓친 칸이다. **합치기가 줄이려는 것이 이것이다.**',
+        '',
+        '| 방식 | 놓침 | 표·룰 탓 | 사진 AI 탓 ↓ |',
+        '|---|---|---|---|',
+        *[f"| {name} | {r['all']['놓침']} | {r['cause']['표·룰 탓']} | **{r['cause']['사진 AI 탓']}** |"
+          for name, r in res.items()],
+        '',
+        '(합친 후보 중에 그 항목이 높은 음식이 있으면 표·룰 탓 칸도 우연히 잡힌다. 그래서 합치는 방식은 표·룰 탓이 '
+        f"{res['정답 음식을 알 때']['all']['놓침']}보다 작다.)",
+        '',
         f'## 사진 AI 1등이 틀린 사진만 ({len(wrong):,}장)',
         '합치기는 1등이 틀렸을 때 효과가 난다. 1등이 맞은 사진에서는 "1등만"과 "우리 방식"이 대부분 같다.',
         '',
@@ -145,10 +161,11 @@ def main(pred_path):
 
     with open(OUT_CSV, 'w', encoding='utf-8-sig', newline='') as f:
         w = csv.writer(f, lineterminator='\n')
-        w.writerow(['사진', '방식', *COLS, '정답1_칸', '정답0_칸'])
+        w.writerow(['사진', '방식', *COLS, '정답1_칸', '정답0_칸', '놓침_표룰탓', '놓침_사진AI탓'])
         for part, label, p_, n_ in (('all', '전체', pos, neg), ('wrong', '1등 틀림', wpos, wneg)):
             for name, r in res.items():
-                w.writerow([label, name, *(r[part][k] for k in COLS), p_, n_])
+                cause = [r['cause']['표·룰 탓'], r['cause']['사진 AI 탓']] if part == 'all' else ['', '']
+                w.writerow([label, name, *(r[part][k] for k in COLS), p_, n_, *cause])
     print('\n'.join(table(res, 'all', pos, neg)))
     print(f'\n저장 → {OUT_MD.name}, {OUT_CSV.name}')
 
