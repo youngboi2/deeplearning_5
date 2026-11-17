@@ -7,3 +7,6 @@ pillow
 pandas
 pyarrow
 transformers
+google-genai
+python-dotenv
+requests

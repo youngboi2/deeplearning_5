@@ -10,6 +10,7 @@ food-101/
 
 # 비밀값 (LLM API 키, 서버 계정)
 .env
+llm/_cache
 
 __pycache__/
 .ipynb_checkpoints/

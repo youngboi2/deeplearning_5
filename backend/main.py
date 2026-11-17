@@ -5,6 +5,7 @@
 문서/테스트 화면:        http://localhost:8000/docs
 """
 import io
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
@@ -15,9 +16,12 @@ from PIL import Image, UnidentifiedImageError
 from knowledge import search
 from knowledge.judge import analyze
 from knowledge.lookup import ALLERGENS
+from llm.explain import explain
 from modeling.model import WEIGHTS, load_model, predict
 
 MAX_BYTES = 10 * 1024 * 1024  # 폰 사진 넉넉히
+EXPLAIN_SECONDS = 15          # 설명(LLM)을 이 이상 기다리지 않음 → explanation None
+_POOL = ThreadPoolExecutor(max_workers=4)
 
 app = FastAPI(title='찍먹')
 
@@ -56,7 +60,17 @@ def analyze_photo(image: UploadFile = File(...), allergens: str = Form('')):
     except ValueError as e:  # 모르는 알레르기 이름
         raise HTTPException(400, str(e))
     result['candidates'] = [{'food': c, 'prob': round(p, 4)} for c, p in cands]
+    result['explanation'] = explanation((result['foods'] or [cands[0][0]])[0], result)
     return result
+
+
+def explanation(cls, result):
+    """'왜요?' 설명 (llm/explain.py). LLM이 느리거나 안 되면 None — 판정 결과는 그대로 나간다."""
+    job = _POOL.submit(explain, cls, result)
+    try:
+        return job.result(timeout=EXPLAIN_SECONDS)
+    except Exception:  # 시간 초과·LLM 오류
+        return None
 
 
 # 화면 (frontend/index.html). API 경로보다 뒤에 둬야 /analyze 등을 가리지 않음
