@@ -1,4 +1,4 @@
-"""LLM 설명 (담당: 김유라).
+"""LLM 설명
 
 규칙
 - 판정(주의/확인 필요/해당 없음/정보 부족)은 knowledge.judge 가 이미 정했다. LLM은 그 결과를 쉬운 말로 풀어 주고
@@ -16,11 +16,14 @@ BANNED = ('안전', 'safe')   # 이 말이 나오면 설명을 쓰지 않는다 
 
 def _facts(cls, info):
     """analyze() 결과 + 표 비율 → LLM에게 줄 근거 (숫자는 표에서만)."""
-    rows = [r for f in info.get('foods') or [cls] if (r := row(f))]
+    # 표 비율은 1단계(표에서 찾은 음식)일 때만 맞는 숫자. 2단계는 CLIP이 찾은 레시피 30개로 따로 계산해서 표 숫자를 쓰면 안 됨
+    stage1 = str(info.get('route', '')).startswith('1단계')
+    rows = [r for f in info.get('foods') or [cls] if (r := row(f))] if stage1 else []
     pct = {a: round(max(r[a] for r in rows) * 100) for a in ALLERGENS} if rows else {}
     mine = {a: {'판정': v, '레시피 중 들어간 비율(%)': pct.get(a)} for a, v in (info.get('verdict') or {}).items()}
     return {
         '음식(영어 이름)': info.get('foods') or [cls],
+        '찾은 방법': '분류 모델이 알아본 음식의 레시피 통계' if stage1 else '처음 보는 음식이라 사진과 비슷한 레시피를 찾아서 계산',
         '판정 경로': info.get('route'),
         '근거 출처': info.get('source'),
         '근거 레시피 수': info.get('n_recipes'),

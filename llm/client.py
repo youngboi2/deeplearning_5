@@ -1,4 +1,4 @@
-"""LLM 부르는 곳 (담당: 김유라). guess.py · explain.py는 여기 ask()만 쓴다.
+"""LLM 부르는 곳. guess.py · explain.py는 여기 ask()만 쓴다.
 
 - 제공자는 .env의 LLM_PROVIDER 로 고른다: gemini(기본) | groq. 다른 곳으로 바꿔도 이 파일만 고치면 된다.
 - 키·모델 이름은 .env 에서 읽는다 (os.environ). 코드·출력에 키를 쓰지 않는다.
