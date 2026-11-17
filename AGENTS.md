@@ -55,10 +55,14 @@ analyze(cands, my_allergens, stage2=None) -> {   # stage2 = lambda: search(img),
   'route': '1단계-1등' | '1단계-합치기' | '2단계',
   'foods': [...], 'verdict': {알레르기: '주의'|'확인 필요'|'해당 없음'|'정보 부족'},
   'other_caution': [...], 'n_recipes': int, 'nutrition': {...}, 'source': str}
-# backend가 여기에 'candidates': [{'food','prob'}] 추가. 설명 붙이면 'explanation': str | None
+# backend가 여기에 추가: 'candidates': [{'food','prob'}], 'llm_guess': [{'food','conf'}] (2단계만, 없으면 []),
+#                        'explanation': str | None   (LLM 호출은 각각 최대 15초)
 
 # 2단계 검색 (knowledge/search.py) — 학습 안 한 기본 CLIP (04·04-2 결과: 파인튜닝은 주의놓침이 더 나빠서 안 씀)
 search(pil_img, k=30) -> (비율 줄, [(class, 유사도 합), ...])   # 비율 줄은 위와 같은 모양, source='CLIP 검색', nutrition={}
+crosscheck((비율 줄, foods), guesses, ingredients_of) -> (비율 줄, foods)
+  # guess_name 결과가 CLIP 상위 3개와 다르면 LLM 쪽 근거(표 비율 또는 guess_ingredients→룰)를 '확인 필요'(0.5)까지만 반영.
+  # 확신 < 0.5·None이면 그대로. backend의 stage2 = search + guess_name(동시) → crosscheck
 
 # LLM (llm/) — 연결 전이면 None 반환, 앱은 None이어도 동작해야 함
 guess_name(pil_img) -> [(영어 음식 이름, 0~1)] | None
