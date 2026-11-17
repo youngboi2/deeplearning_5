@@ -104,7 +104,6 @@
 
   .facts { margin-top: 16px; display: grid; gap: 6px; font-size: 13px; color: var(--sub); }
   .facts b { color: var(--ink); font-weight: 500; }
-  .explain { margin-top: 16px; padding: 12px 14px; border-left: 2px solid var(--line); font-size: 14px; line-height: 1.6; color: var(--ink); }
   .nutri { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); margin-top: 16px; }
   .nutri div { padding: 10px 8px; text-align: center; }
   .nutri div + div { border-left: 1px solid var(--line); }
@@ -191,8 +190,9 @@
    other_caution  [알레르기]                                      '그 밖에 자주 들어가는 재료'
    n_recipes      int                                             근거 레시피 수, 정보 부족 안내
    nutrition      {kcal, sodium_mg, protein_g, ...} 또는 {}        영양 칸 (비면 안내 문구)
-   source         '레시피 통계' | 'CLIP 검색' | 'LLM 추정' (여럿이면 ' / ')  근거, '추정'이 들어 있으면 추정 표시
+   source         '레시피 통계' | 'CLIP 검색' | 'CLIP 검색 + LLM 재료 추정 (음식)' 등  근거, '추정'이 들어 있으면 추정 표시
    candidates     [{food, prob}]                                  모델 확신도 (1등)
+   llm_guess      [{food, conf}] (2단계에서만, 없으면 [])          'AI 추정 이름'
    explanation    str | null                                      '왜 이런 결과인가요?' 카드 (없으면 숨김)
 */
 const $ = id => document.getElementById(id);
@@ -268,7 +268,7 @@ function render(d) {
     `<div class="row"><span class="name">${esc(a)}</span><span class="lv ${cls(lv)}">${esc(lv)}</span></div>`).join('');
   const nut = NUTRI.filter(([k]) => d.nutrition?.[k] != null);
   const top = d.candidates?.[0];
-  const est = /추정/.test(d.source || '');   // LLM이 재료를 추정한 결과 (AGENTS.md 규칙 2)
+  const est = /추정/.test(d.source || '');   // 근거에 LLM 추정이 섞인 결과 (AGENTS.md 규칙 2)
   return `
     <div class="result-head">
       <div><p class="what">이 음식은${est ? ' <span class="est">추정</span>' : ''}</p><h3>${esc(title)}</h3></div>
@@ -280,10 +280,9 @@ function render(d) {
         `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span>${
           k === 'sodium_mg' ? sodium(d.nutrition[k]) : ''}</div>`).join('')}</div>
       <p class="nutri-cap">1인분 기준 (레시피 중앙값)</p>` : ''}
-    ${d.explanation ? `<p class="explain">${esc(d.explanation)}</p>` : ''}
     <div class="facts">
       ${levels.includes('정보 부족') ? `<p class="note"><b>정보 부족</b>: 이 음식은 레시피가 ${d.n_recipes}개뿐이라 들어가는지 판단하기 어려워요. 꼭 가게에 물어보세요.</p>` : ''}
-      ${est ? '<p class="note"><b>추정</b>: 레시피 통계가 없어서 AI가 재료를 추정했어요. 실제와 다를 수 있어요.</p>' : ''}
+      ${est ? '<p class="note"><b>추정</b>: 결과에 AI 추정이 섞여 있어요. 실제와 다를 수 있어요.</p>' : ''}
       ${d.route === '2단계' && d.foods.length ? `<p>비슷한 레시피 <b>${d.foods.map(f => esc(nice(f))).join(', ')}</b></p>` : ''}
       ${d.llm_guess?.length ? `<p>AI 추정 이름 <b>${esc(nice(d.llm_guess[0].food))}</b> (추정)</p>` : ''}
       ${!nut.length && NO_NUTRI[d.route] ? `<p>${NO_NUTRI[d.route]}</p>` : ''}
