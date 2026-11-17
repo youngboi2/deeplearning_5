@@ -17,6 +17,7 @@ from knowledge import search
 from knowledge.judge import analyze
 from knowledge.lookup import ALLERGENS
 from llm.explain import explain
+from llm.guess import guess_ingredients, guess_name
 from modeling.model import WEIGHTS, load_model, predict
 
 MAX_BYTES = 10 * 1024 * 1024  # 폰 사진 넉넉히
@@ -54,19 +55,27 @@ def analyze_photo(image: UploadFile = File(...), allergens: str = Form('')):
 
     mine = [a.strip() for a in allergens.split(',') if a.strip()]
     cands = predict(model(), img)
-    stage2 = (lambda: search.search(img)) if search.available() else None  # 검색 목록(knowledge/index/) 있을 때만
+    guesses = []
+
+    def stage2():
+        """처음 보는 음식: CLIP 검색 + LLM 이름 추정(동시에) → 교차 확인. LLM 실패면 CLIP만."""
+        job = _POOL.submit(guess_name, img)
+        hit = search.search(img)
+        guesses[:] = _wait(job) or []
+        return search.crosscheck(hit, guesses, lambda n: _wait(_POOL.submit(guess_ingredients, n)))
+
     try:
-        result = analyze(cands, mine, stage2)
+        result = analyze(cands, mine, stage2 if search.available() else None)  # 검색 목록(knowledge/index/) 있을 때만
     except ValueError as e:  # 모르는 알레르기 이름
         raise HTTPException(400, str(e))
     result['candidates'] = [{'food': c, 'prob': round(p, 4)} for c, p in cands]
-    result['explanation'] = explanation((result['foods'] or [cands[0][0]])[0], result)
+    result['llm_guess'] = [{'food': n, 'conf': round(c, 2)} for n, c in guesses]
+    result['explanation'] = _wait(_POOL.submit(explain, (result['foods'] or [cands[0][0]])[0], result))
     return result
 
 
-def explanation(cls, result):
-    """'왜요?' 설명 (llm/explain.py). LLM이 느리거나 안 되면 None — 판정 결과는 그대로 나간다."""
-    job = _POOL.submit(explain, cls, result)
+def _wait(job):
+    """LLM 결과를 EXPLAIN_SECONDS까지만 기다림. 느리거나 안 되면 None — 판정 결과는 그대로 나간다."""
     try:
         return job.result(timeout=EXPLAIN_SECONDS)
     except Exception:  # 시간 초과·LLM 오류

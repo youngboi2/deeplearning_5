@@ -104,6 +104,7 @@
 
   .facts { margin-top: 16px; display: grid; gap: 6px; font-size: 13px; color: var(--sub); }
   .facts b { color: var(--ink); font-weight: 500; }
+  .explain { margin-top: 16px; padding: 12px 14px; border-left: 2px solid var(--line); font-size: 14px; line-height: 1.6; color: var(--ink); }
   .nutri { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); margin-top: 16px; }
   .nutri div { padding: 10px 8px; text-align: center; }
   .nutri div + div { border-left: 1px solid var(--line); }
@@ -241,8 +242,10 @@ function render(d) {
     <div class="rows">${rows}</div>
     ${nut.length ? `<div class="nutri">${nut.map(([k, n, u]) =>
         `<div><strong>${Math.round(d.nutrition[k]).toLocaleString()}</strong><span>${n} ${u}</span></div>`).join('')}</div>` : ''}
+    ${d.explanation ? `<p class="explain">${esc(d.explanation)}</p>` : ''}
     <div class="facts">
       ${d.route === '2단계' && d.foods.length ? `<p>비슷한 레시피 <b>${d.foods.map(f => esc(nice(f))).join(', ')}</b></p>` : ''}
+      ${d.llm_guess?.length ? `<p>AI 추정 이름 <b>${esc(nice(d.llm_guess[0].food))}</b> (추정)</p>` : ''}
       ${d.other_caution.length ? `<p>그 밖에 자주 들어가는 재료 <b>${d.other_caution.map(esc).join(', ')}</b></p>` : ''}
       <p>근거 <b>${esc(d.source)}</b>${d.n_recipes ? ` · 레시피 <b>${d.n_recipes.toLocaleString()}개</b>` : ''}</p>
       ${top ? `<p>모델 확신도 <b>${Math.round(top.prob * 100)}%</b></p>` : ''}
